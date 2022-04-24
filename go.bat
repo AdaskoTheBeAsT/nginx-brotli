@@ -1,0 +1,1 @@
+docker build --build-arg ENABLED_MODULES="brotli" -t adaskothebeast/nginx-brotli .
