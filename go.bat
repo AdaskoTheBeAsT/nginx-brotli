@@ -1,1 +1,1 @@
-docker build --build-arg ENABLED_MODULES="brotli headers-more njs geoip image-filter" -t adaskothebeast/nginx-brotli .
+docker build -t adaskothebeast/nginx-brotli .
