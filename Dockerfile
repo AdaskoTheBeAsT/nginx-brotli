@@ -1,4 +1,4 @@
-FROM nginx:1.23.3-alpine as builder
+FROM nginx:1.24.0-alpine as builder
 
 ENV ENABLED_MODULES="brotli headers-more geoip image-filter"
 
@@ -60,7 +60,7 @@ RUN set -ex \
     done \
     && echo "BUILT_MODULES=\"$BUILT_MODULES\"" > /tmp/packages/modules.env
 
-FROM nginx:1.23.3-alpine
+FROM nginx:1.24.0-alpine
 COPY --from=builder /tmp/packages /tmp/packages
 COPY ./nginx.conf /etc/nginx/nginx.conf
 RUN set -ex \
