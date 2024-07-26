@@ -1,4 +1,4 @@
-FROM nginx:1.25.3-alpine-slim as builder
+FROM nginx:1.27.0-alpine-slim as builder
 
 ENV ENABLED_MODULES="brotli headers-more geoip image-filter"
 
@@ -12,9 +12,9 @@ COPY ./ /modules/
 
 RUN set -ex \
     && apk update \
-    && apk add linux-headers openssl-dev=3.1.4-r4 pcre2-dev zlib-dev openssl=3.1.4-r4 abuild \
+    && apk add linux-headers openssl-dev pcre2-dev zlib-dev openssl abuild \
     musl-dev libxslt libxml2-utils make mercurial gcc unzip git \
-    xz g++ coreutils \
+    xz g++ coreutils expat \
     # allow abuild as a root user \
     && printf "#!/bin/sh\\nSETFATTR=true /usr/bin/abuild -F \"\$@\"\\n" > /usr/local/bin/abuild \
     && chmod +x /usr/local/bin/abuild \
@@ -60,11 +60,11 @@ RUN set -ex \
     done \
     && echo "BUILT_MODULES=\"$BUILT_MODULES\"" > /tmp/packages/modules.env
 
-FROM nginx:1.25.3-alpine-slim
+FROM nginx:1.27.0-alpine-slim
 COPY --from=builder /tmp/packages /tmp/packages
 COPY ./nginx.conf /etc/nginx/nginx.conf
 RUN set -ex \
-    && apk add --no-cache openssl=3.1.4-r4 \
+    && apk add --no-cache openssl expat \
     && . /tmp/packages/modules.env \
     && for module in $BUILT_MODULES; do \
     apk add --no-cache --allow-untrusted /tmp/packages/nginx-module-${module}-${NGINX_VERSION}*.apk; \
