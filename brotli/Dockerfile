@@ -1,4 +1,4 @@
-FROM nginx:1.27.0-alpine-slim as builder
+FROM nginx:1.27.0-alpine-slim AS builder
 
 ENV ENABLED_MODULES="brotli headers-more geoip image-filter"
 
