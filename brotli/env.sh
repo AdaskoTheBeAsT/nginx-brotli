@@ -1,5 +1,7 @@
 #!/bin/sh
 
+printf 'Starting to generate config file...\n'
+
 # Define the directory where the config file is located
 CONFIG_DIR="/var/www"
 BASENAME="env-config"
@@ -33,30 +35,28 @@ output="window._env_ = {\n"
 first_entry=true
 
 # Process each line in the .env file
-while IFS='=' read -r varname varvalue || [ -n "$varname" ]; do
+while IFS= read -r line || [ -n "$line" ]; do
   # Skip empty lines or lines that do not contain '='
-  if [ -z "$varname" ] || [ -z "$varvalue" ]; then
+  if [ -z "$line" ] || [[ "$line" != *"="* ]]; then
     continue
   fi
 
-  # Read the value of the current variable if it exists as an Environment variable
-  value=$(eval echo \$$varname)
+  # Split on the first '=' only to handle cases where '=' exists in the value
+  varname=$(echo "$line" | cut -d '=' -f 1)
+  varvalue=$(echo "$line" | cut -d '=' -f 2-)
 
-  # Otherwise, use the value from the .env file
-  [ -z "$value" ] && value=$varvalue
+  # Trim surrounding quotes if present
+  varvalue=$(echo "$varvalue" | sed 's/^"//' | sed 's/"$//')
 
-  # Remove any newline or control characters from the value
-  value=$(echo "$value" | tr -d '\n' | tr -d '\r')
-
-  # Properly escape double quotes in the value
-  value=$(printf '%s' "$value" | sed 's/"/\\"/g')
+  # Escape backslashes and double quotes in the value (but leave %2B intact)
+  varvalue=$(echo "$varvalue" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
 
   # Build the key-value pair string
   if [ "$first_entry" = true ]; then
-    output="$output  \"$varname\": \"$value\""
+    output="$output  \"$varname\": \"$varvalue\""
     first_entry=false
   else
-    output="$output,\n  \"$varname\": \"$value\""
+    output="$output,\n  \"$varname\": \"$varvalue\""
   fi
 
 done <.env
@@ -64,7 +64,7 @@ done <.env
 # Close the JSON object in the output
 output="$output\n}"
 
-# Write the final content to the file
-printf "$output\n" >"$CACHE_BUSTED_FILE"
+# Write the final content to the file using `echo -e` to interpret newlines
+echo -e "$output" >"$CACHE_BUSTED_FILE"
 
 echo "Generated $CACHE_BUSTED_FILE successfully."

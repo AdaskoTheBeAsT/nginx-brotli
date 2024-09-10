@@ -61,8 +61,11 @@ RUN set -ex \
     && echo "BUILT_MODULES=\"$BUILT_MODULES\"" > /tmp/packages/modules.env
 
 FROM nginx:1.27.0-alpine-slim
-COPY --from=builder /tmp/packages /tmp/packages
+COPY env.sh /usr/local/bin/env.sh
+RUN chmod +x /usr/local/bin/env.sh
 COPY ./nginx.conf /etc/nginx/nginx.conf
+COPY ./headers.conf /etc/nginx/conf.d/headers.conf
+COPY --from=builder /tmp/packages /tmp/packages
 RUN set -ex \
     && apk add --no-cache openssl expat \
     && . /tmp/packages/modules.env \

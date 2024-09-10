@@ -1,4 +1,4 @@
-FROM node:20.17.0-alpine AS build
+FROM node:20.17.0-alpine3.20 AS build
 
 # install all native build libs
 RUN apk add --no-cache --update \

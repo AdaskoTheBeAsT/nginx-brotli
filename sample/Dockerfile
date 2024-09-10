@@ -27,12 +27,7 @@ RUN yarn build && \
 #RUN yarn htmlhint:ci:html:docker
 
 ################# Final #################
-FROM adaskothebeast/nginx-brotli:v1.27.0-slim AS deploy
-
-RUN rm /etc/nginx/conf.d/default.conf
-COPY ./nginx.conf /etc/nginx/nginx.conf.template
-RUN mv /etc/nginx/nginx.conf /etc/nginx/nginx.conf.orig
-COPY ./nginx.conf /etc/nginx/nginx.conf
+FROM adaskothebeast/nginx-brotli:v1.27.2-slim AS deploy
 
 ENV uri=\$uri
 
@@ -58,9 +53,6 @@ VOLUME ["/var/cache/nginx"]
 # Expose server ports
 EXPOSE 8080
 
-COPY env.sh /usr/local/bin/env.sh
-RUN chmod +x /usr/local/bin/env.sh
-
 # export command exports given env variable to be visible by substenv
 # iterate over files in source folder
 # use envsubs to modify env variables then compress by gzip brotli
@@ -77,6 +69,5 @@ ENTRYPOINT ["sh", "-c", "export API_BASE_URL \
   && export APP_CLIENT_ID \
   && export API_SCOPES \
   && /usr/local/bin/env.sh \
-  && envsubst </etc/nginx/nginx.conf.template >/tmp/nginx.conf \
   && nginx -g 'daemon off;'"]
 USER www
