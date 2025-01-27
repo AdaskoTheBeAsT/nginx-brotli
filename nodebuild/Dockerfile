@@ -1,14 +1,17 @@
-FROM node:20.17.0-alpine3.20 AS build
+FROM node:22.13.1-alpine3.21 AS build
 
 # install all native build libs
 RUN apk add --no-cache --update \
   bash \
   curl \
   openjdk11 \
+  openssl \
   unzip \
   zstd
 
-RUN npm i --location=global dotenv-cli
+RUN npm uninstall --location=global cross-spawn
+
+RUN npm i --location=global dotenv-cli cross-spawn
 
 # set java env variables for sonar
 ENV JAVA_HOME=/usr/lib/jvm/default-jvm/jre \
@@ -17,7 +20,7 @@ ENV JAVA_HOME=/usr/lib/jvm/default-jvm/jre \
 # download latest version of sonar
 # it needs to be stored in special folder for
 # sonarqube-scanner
-ENV SONAR_SCANNER_VERSION=6.1.0.4477
+ENV SONAR_SCANNER_VERSION=7.0.0.4796
 ENV SONAR_BINARY_CACHE=/tmp
 ENV SONAR_ZIP_LOCATION=${SONAR_BINARY_CACHE}/sonar-scanner.zip
 ENV SONAR_MAIN_FOLDER=${SONAR_BINARY_CACHE}/.sonar/native-sonar-scanner
