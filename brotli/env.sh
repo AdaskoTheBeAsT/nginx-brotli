@@ -5,6 +5,9 @@
 
 printf 'Starting to generate config file...\n'
 
+# Normalize line endings in the .env file (convert \r\n to \n)
+sed -i 's/\r$//' .env
+
 # Collect all prefixes passed to the script
 PREFIXES="$@" # e.g., "a1 a2 a3"
 
@@ -12,24 +15,45 @@ PREFIXES="$@" # e.g., "a1 a2 a3"
 CONFIG_DIR="/var/www"
 BASENAME="env-config"
 
-# Find any cache-busted env-config files (e.g. env-config.[hash].js) recursively in subfolders
+# Find any cache-busted file that starts with "env-config" and ends in ".js" recursively in subfolders
 # We take only the first file returned by find. If none is found, CURRENT_FILE stays empty.
-CURRENT_FILE="$(find "$CONFIG_DIR" -type f -name "${BASENAME}.*.js" 2>/dev/null | head -n 1)"
+# This covers names like env-config.js, env-config-DgyoikIV.js, env-config.something.js, etc.
+CURRENT_FILE="$(find "$CONFIG_DIR" -type f -name "${BASENAME}*.js" 2>/dev/null | head -n 1)"
 
-# If no cache-busted file is found, fall back to the default name
-if [ -z "$CURRENT_FILE" ]; then
-  echo "No cache-busted file found. Checking for the default config file."
-  CURRENT_FILE="$CONFIG_DIR/$BASENAME.js"
-fi
+if [ -n "$CURRENT_FILE" ]; then
+  echo "Found existing file: $CURRENT_FILE"
 
-# If neither cache-busted nor default file exists, use the default name for output
-if [ ! -f "$CURRENT_FILE" ]; then
-  echo "No existing config file found. Using default name."
-  CACHE_BUSTED_FILE="$CONFIG_DIR/$BASENAME.js"
+  # Extract directory and filename
+  FILE_DIR="$(dirname "$CURRENT_FILE")"
+  FILE_BASENAME="$(basename "$CURRENT_FILE")" # e.g. env-config-DgyoikIV.js
+
+  # Attempt to extract the suffix between "env-config" and ".js".
+  # For example:
+  #   env-config.js           -> (empty suffix)
+  #   env-config-DgyoikIV.js  -> suffix = -DgyoikIV
+  #   env-config.something.js -> suffix = .something
+  #   env-configSomething.js  -> suffix = Something
+  FILE_SUFFIX="$(echo "$FILE_BASENAME" | sed -n 's/^env-config\(.*\)\.js$/\1/p')"
+
+  # Build the final path for writing
+  # If there's a suffix, we'll use it; if it's empty, that means it was exactly "env-config.js"
+  CACHE_BUSTED_FILE="$FILE_DIR/${BASENAME}${FILE_SUFFIX}.js"
 else
-  echo "Found existing config file: $CURRENT_FILE"
-  CACHE_BUSTED_FILE="$CURRENT_FILE"
+  # 2) If no matching file is found, fall back to a standard env-config.js in /var/www
+  echo "No file found that starts with env-config and ends with .js."
+  DEFAULT_FILE="$CONFIG_DIR/$BASENAME.js"
+
+  if [ -f "$DEFAULT_FILE" ]; then
+    echo "Found existing default config file: $DEFAULT_FILE"
+    CACHE_BUSTED_FILE="$DEFAULT_FILE"
+  else
+    # If neither is found, create a new file named env-config.js
+    echo "No existing default config file found. Using $BASENAME.js in $CONFIG_DIR."
+    CACHE_BUSTED_FILE="$DEFAULT_FILE"
+  fi
 fi
+
+echo "Target config file for writing: $CACHE_BUSTED_FILE"
 
 # Recreate config file
 rm -rf "$CACHE_BUSTED_FILE"
@@ -63,7 +87,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     # Check if the variable is non-empty and not "null"
     if [ -n "$varvalue" ] && [ "$varvalue" != "null" ]; then
       # Replace the existing CSP line in headers.conf with the new value
-      sed -i "s|^more_set_headers \"Content-Security-Policy:.*|more_set_headers \"Content-Security-Policy: $varvalue\"|g" /etc/nginx/conf.d/headers.conf
+      sed -i "s|^more_set_headers \"Content-Security-Policy:.*|more_set_headers \"Content-Security-Policy: $varvalue\";|g" /etc/nginx/conf.d/headers.conf
     fi
     continue
   fi

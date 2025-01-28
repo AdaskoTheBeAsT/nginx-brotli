@@ -1,3 +1,9 @@
 {
-  "cSpell.words": ["adaskothebeast"]
+  "cSpell.words": ["adaskothebeast"],
+  "files.associations": {
+    "*.conf": "conf"
+  },
+  "[conf]": {
+    "editor.formatOnSave": false
+  }
 }
