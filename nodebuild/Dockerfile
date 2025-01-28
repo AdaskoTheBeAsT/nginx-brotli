@@ -4,6 +4,8 @@ FROM node:22.13.1-alpine3.21 AS build
 RUN apk add --no-cache --update \
   bash \
   curl \
+  ffmpeg \
+  libwebp-tools \
   openjdk11 \
   openssl \
   unzip \
@@ -12,6 +14,12 @@ RUN apk add --no-cache --update \
 RUN npm uninstall --location=global cross-spawn
 
 RUN npm i --location=global dotenv-cli cross-spawn
+
+# Enable Corepack
+RUN corepack enable
+
+# Install & activate a specific Yarn version (e.g., 4.6.0)
+RUN corepack prepare yarn@4.6.0 --activate
 
 # set java env variables for sonar
 ENV JAVA_HOME=/usr/lib/jvm/default-jvm/jre \

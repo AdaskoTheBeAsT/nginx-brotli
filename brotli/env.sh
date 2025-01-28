@@ -1,13 +1,20 @@
 #!/bin/sh
 
+# Example usage: ./env.sh a1 a2 a3
+# This means: Only process .env variables whose names start with a1, a2, or a3.
+
 printf 'Starting to generate config file...\n'
+
+# Collect all prefixes passed to the script
+PREFIXES="$@" # e.g., "a1 a2 a3"
 
 # Define the directory where the config file is located
 CONFIG_DIR="/var/www"
 BASENAME="env-config"
 
-# Try to find the current cache-busted file (e.g., env-config.[hash].js)
-CURRENT_FILE=$(ls $CONFIG_DIR/$BASENAME.*.js 2>/dev/null)
+# Find any cache-busted env-config files (e.g. env-config.[hash].js) recursively in subfolders
+# We take only the first file returned by find. If none is found, CURRENT_FILE stays empty.
+CURRENT_FILE="$(find "$CONFIG_DIR" -type f -name "${BASENAME}.*.js" 2>/dev/null | head -n 1)"
 
 # If no cache-busted file is found, fall back to the default name
 if [ -z "$CURRENT_FILE" ]; then
@@ -50,6 +57,35 @@ while IFS= read -r line || [ -n "$line" ]; do
 
   # Escape backslashes and double quotes in the value (but leave %2B intact)
   varvalue=$(echo "$varvalue" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+
+  # If it's the Content-Security-Policy variable, update Nginx headers *only if* value is not empty or "null"
+  if [ "$varname" = "CONTENT_SECURITY_POLICY" ]; then
+    # Check if the variable is non-empty and not "null"
+    if [ -n "$varvalue" ] && [ "$varvalue" != "null" ]; then
+      # Replace the existing CSP line in headers.conf with the new value
+      sed -i "s|^more_set_headers \"Content-Security-Policy:.*|more_set_headers \"Content-Security-Policy: $varvalue\"|g" /etc/nginx/conf.d/headers.conf
+    fi
+    continue
+  fi
+
+  # Only proceed if varname starts with one of the prefixes in $PREFIXES
+  should_skip=true
+
+  # Iterate through each prefix provided to the script
+  for prefix in $PREFIXES; do
+    # Check if varname starts with this prefix
+    case "$varname" in
+    $prefix*)
+      should_skip=false
+      break
+      ;;
+    esac
+  done
+
+  # If it didn't match any prefix, skip processing this variable
+  if [ "$should_skip" = true ]; then
+    continue
+  fi
 
   # Build the key-value pair string
   if [ "$first_entry" = true ]; then

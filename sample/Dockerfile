@@ -1,11 +1,11 @@
 ################# Build #################
-FROM adaskothebeast/node-build:v1.0.0 AS build
+FROM adaskothebeast/node-build:v1.2.0 AS build
 
 # create and change app folder
 WORKDIR /app
 
 # copy inly files necessary for node packages restore
-COPY package.json yarn.lock check-zstd.js ./
+COPY package.json yarn.lock check-libs.js ./
 #COPY ./patches ./patches
 
 # restore with lockfile - less frequent layer rebuild
@@ -27,7 +27,7 @@ RUN yarn build && \
 #RUN yarn htmlhint:ci:html:docker
 
 ################# Final #################
-FROM adaskothebeast/nginx-brotli:v1.27.2-slim AS deploy
+FROM adaskothebeast/nginx-brotli:v1.27.5-slim AS deploy
 
 ENV uri=\$uri
 
@@ -53,21 +53,19 @@ VOLUME ["/var/cache/nginx"]
 # Expose server ports
 EXPOSE 8080
 
-# export command exports given env variable to be visible by substenv
-# iterate over files in source folder
-# use envsubs to modify env variables then compress by gzip brotli
-# then copy back to /var/www
-# higly inspired by two articles
+# export command exports given env variable to be visible
+# highly inspired by two articles
 # https://developers.redhat.com/blog/2021/03/04/making-environment-variables-accessible-in-front-end-containers#conclusion
 # in comments there is information about "sponge"
 # https://github.com/joellord/frontend-containers/blob/main/envvars.md
 # https://github.com/joellord/frontend-containers/blob/main/rootless.md
 # https://github.com/joellord/frontend-containers/tree/main/react-project
-# also nginx.conf is modified by envsubst
+# script modifies env-config.js file
+# and also CONTENT_SECURITY_POLICY in headers.conf
 ENTRYPOINT ["sh", "-c", "export API_BASE_URL \
   && export APP_TENANT_ID \
   && export APP_CLIENT_ID \
   && export API_SCOPES \
-  && /usr/local/bin/env.sh \
+  && /usr/local/bin/env.sh API APP \
   && nginx -g 'daemon off;'"]
 USER www
