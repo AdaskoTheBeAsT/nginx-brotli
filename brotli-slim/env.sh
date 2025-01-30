@@ -102,7 +102,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     # Check if the variable is non-empty and not "null"
     if [ -n "$varvalue" ] && [ "$varvalue" != "null" ]; then
       # Replace the existing CSP line in headers.conf with the new value
-      sed -i "s|^more_set_headers \"Content-Security-Policy:.*|more_set_headers \"Content-Security-Policy: $varvalue\";|g" /etc/nginx/conf.d/headers.conf
+      sed -i "s|^\(more_set_headers \"Content-Security-Policy:\).*|\1 $varvalue\";|g" /etc/nginx/conf.d/headers.conf
     fi
     continue
   fi

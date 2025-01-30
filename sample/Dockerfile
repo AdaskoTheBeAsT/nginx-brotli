@@ -27,7 +27,7 @@ RUN yarn build && \
 #RUN yarn htmlhint:ci:html:docker
 
 ################# Final #################
-FROM adaskothebeast/nginx-brotli:v1.27.5-slim AS deploy
+FROM adaskothebeast/nginx-brotli:v1.27.9-slim AS deploy
 
 ENV uri=\$uri
 
