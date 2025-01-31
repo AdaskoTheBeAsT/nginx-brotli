@@ -1,6 +1,6 @@
 FROM nginx:1.27.0-alpine-slim AS builder
 
-ENV ENABLED_MODULES="brotli headers-more geoip image-filter"
+ENV ENABLED_MODULES="brotli headers-more"
 
 RUN set -ex \
   && if [ "$ENABLED_MODULES" = "" ]; then \
