@@ -5,6 +5,12 @@
 
 printf 'Starting to generate config file...\n'
 
+# Prevent silent failures by checking for the existence of .env.
+if [ ! -f .env ]; then
+  echo "Error: .env file not found."
+  exit 1
+fi
+
 # Ensure the script is called correctly.
 if [ $# -eq 0 ]; then
   echo "Error: At least one prefix must be provided."
@@ -14,12 +20,8 @@ fi
 # Add this at the top to exit on errors, unset variables, or pipeline failures.
 set -euo pipefail
 
-# Normalize line endings in the .env file (convert \r\n to \n) if the file exists
-if [ -f .env ]; then
-  sed -i 's/\r$//' .env
-else
-  echo "Warning: .env file not found. Only using environment variables."
-fi
+# Normalize line endings in the .env file (convert \r\n to \n)
+sed -i 's/\r$//' .env
 
 # Collect all prefixes passed to the script
 PREFIXES="$@" # e.g., "a1 a2 a3"
@@ -78,47 +80,61 @@ output="window._env_ = {\n"
 # Initialize a variable to track whether this is the first entry
 first_entry=true
 
-# Load variables from .env into a temporary file for easy lookup
-if [ -f .env ]; then
-  grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .env | sed 's/^"//; s/"$//' >/tmp/env_vars.tmp
-else
-  >/tmp/env_vars.tmp # Ensure file exists but is empty if no .env
-fi
+# Process each line in the .env file
+while IFS= read -r line || [ -n "$line" ]; do
+  # Skip empty lines or lines that do not contain '='
+  if [ -z "$line" ] || [[ "$line" != *"="* ]]; then
+    continue
+  fi
 
-# Process each variable with the given prefixes
-env | cut -d= -f1 | while read -r varname; do
+  # Split on the first '=' only to handle cases where '=' exists in the value
+  varname=$(echo "$line" | cut -d '=' -f 1)
+  varvalue=$(echo "$line" | cut -d '=' -f 2-)
+
+  # Trim surrounding quotes if present
+  varvalue=$(echo "$varvalue" | sed 's/^"//' | sed 's/"$//')
+
+  # Escape backslashes and double quotes in the value (but leave %2B intact)
+  varvalue=$(echo "$varvalue" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+
+  # If it's the Content-Security-Policy variable, update Nginx headers *only if* value is not empty or "null"
+  if [ "$varname" = "CONTENT_SECURITY_POLICY" ]; then
+    # Check if the variable is non-empty and not "null"
+    if [ -n "$varvalue" ] && [ "$varvalue" != "null" ]; then
+      # Replace the existing CSP line in headers.conf with the new value
+      sed -i "s|^more_set_headers \"Content-Security-Policy:.*|more_set_headers \"Content-Security-Policy: $varvalue\";|g" /etc/nginx/conf.d/headers.conf
+    fi
+    continue
+  fi
+
+  # Only proceed if varname starts with one of the prefixes in $PREFIXES
+  should_skip=true
+
+  # Iterate through each prefix provided to the script
   for prefix in $PREFIXES; do
+    # Check if varname starts with this prefix
     case "$varname" in
     $prefix*)
-      # Get value from environment or fallback to .env
-      varvalue=$(printenv "$varname" || grep -m1 "^$varname=" /tmp/env_vars.tmp | cut -d= -f2-)
-
-      # Skip if empty
-      [ -z "$varvalue" ] && continue
-
-      # ✅ Special case: Handle CONTENT_SECURITY_POLICY separately
-      if [ "$varname" = "CONTENT_SECURITY_POLICY" ]; then
-        if [ "$varvalue" != "null" ]; then
-          echo "Updating Content-Security-Policy in Nginx configuration..."
-          sed -i "s|^\(more_set_headers \"Content-Security-Policy:\).*|\1 $varvalue\";|g" /etc/nginx/conf.d/headers.conf
-        fi
-        continue # Do NOT write to env-config.js
-      fi
-
-      # Escape backslashes and double quotes
-      varvalue=$(echo "$varvalue" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
-
-      # Format output
-      if [ "$first_entry" = true ]; then
-        output="$output  \"$varname\": \"$varvalue\""
-        first_entry=false
-      else
-        output="$output,\n  \"$varname\": \"$varvalue\""
-      fi
+      should_skip=false
+      break
       ;;
     esac
   done
-done
+
+  # If it didn't match any prefix, skip processing this variable
+  if [ "$should_skip" = true ]; then
+    continue
+  fi
+
+  # Build the key-value pair string
+  if [ "$first_entry" = true ]; then
+    output="$output  \"$varname\": \"$varvalue\""
+    first_entry=false
+  else
+    output="$output,\n  \"$varname\": \"$varvalue\""
+  fi
+
+done <.env
 
 # Close the JSON object in the output
 output="$output\n}"
