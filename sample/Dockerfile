@@ -1,5 +1,5 @@
 ################# Build #################
-FROM adaskothebeast/node-build:v1.2.0 AS build
+FROM adaskothebeast/node-build:v1.3.0 AS build
 
 # create and change app folder
 WORKDIR /app
@@ -27,7 +27,7 @@ RUN yarn build && \
 #RUN yarn htmlhint:ci:html:docker
 
 ################# Final #################
-FROM adaskothebeast/nginx-brotli:v1.27.9-slim AS deploy
+FROM adaskothebeast/nginx-brotli:v1.27.14-slim AS deploy
 
 ENV uri=\$uri
 
