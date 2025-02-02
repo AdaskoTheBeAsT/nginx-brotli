@@ -1,5 +1,5 @@
 ################# Build #################
-FROM adaskothebeast/node-build:v1.3.0 AS build
+FROM adaskothebeast/node-build:v1.2.0 AS build
 
 # create and change app folder
 WORKDIR /app
