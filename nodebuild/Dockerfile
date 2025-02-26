@@ -1,4 +1,4 @@
-FROM node:22.13.1-alpine3.21 AS build
+FROM node:22.14.0-alpine3.21 AS build
 
 # install all native build libs
 RUN apk add --no-cache --update \
@@ -28,7 +28,7 @@ ENV JAVA_HOME=/usr/lib/jvm/default-jvm/jre \
 # download latest version of sonar
 # it needs to be stored in special folder for
 # sonarqube-scanner
-ENV SONAR_SCANNER_VERSION=7.0.0.4796
+ENV SONAR_SCANNER_VERSION=7.0.2.4839
 ENV SONAR_BINARY_CACHE=/tmp
 ENV SONAR_ZIP_LOCATION=${SONAR_BINARY_CACHE}/sonar-scanner.zip
 ENV SONAR_MAIN_FOLDER=${SONAR_BINARY_CACHE}/.sonar/native-sonar-scanner
