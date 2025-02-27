@@ -21,10 +21,10 @@ ADD http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz /usr/src/nginx.tar.g
 RUN tar -zxf /usr/src/nginx.tar.gz \
   && git clone https://github.com/openresty/headers-more-nginx-module.git \
   && cd headers-more-nginx-module \
-  && git checkout master && cd .. \
+  && git checkout 84a65d68687c9de5166fd49ddbbd68c6962234eb && cd .. \
   && git clone --recurse-submodules https://github.com/google/ngx_brotli.git \
   && cd ngx_brotli \
-  && git checkout master \
+  && git checkout a71f9312c2deb28875acc7bacfdd5695a111aa53 \
   && git submodule update --init
 
 WORKDIR /usr/src/nginx-${NGINX_VERSION}
