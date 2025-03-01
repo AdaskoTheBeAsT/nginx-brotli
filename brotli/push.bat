@@ -1,4 +1,4 @@
-docker image tag adaskothebeast/nginx-brotli:latest adaskothebeast/nginx-brotli:v1.27.14-slim
-docker image tag adaskothebeast/nginx-brotli:latest adaskothebeast/nginx-brotli:v1.27-slim
-docker image tag adaskothebeast/nginx-brotli:latest adaskothebeast/nginx-brotli:v1-slim
+docker image tag adaskothebeast/nginx-brotli:latest adaskothebeast/nginx-brotli:v2.0.0-slim
+docker image tag adaskothebeast/nginx-brotli:latest adaskothebeast/nginx-brotli:v2.0-slim
+docker image tag adaskothebeast/nginx-brotli:latest adaskothebeast/nginx-brotli:v2-slim
 docker image push --all-tags adaskothebeast/nginx-brotli
