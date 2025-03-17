@@ -1,5 +1,8 @@
 FROM node:22.14.0-alpine3.21 AS build
 
+RUN apk update && apk add libjxl=0.10.4-r0 \
+  libxml2=2.13.4-r5
+
 # install all native build libs
 RUN apk add --no-cache --update \
   bash \
@@ -11,15 +14,15 @@ RUN apk add --no-cache --update \
   unzip \
   zstd
 
-RUN npm uninstall --location=global cross-spawn
+#RUN npm uninstall --location=global cross-spawn
 
-RUN npm i --location=global dotenv-cli cross-spawn
+#RUN npm i --location=global dotenv-cli cross-spawn
 
 # Enable Corepack
 RUN corepack enable
 
-# Install & activate a specific Yarn version (e.g., 4.6.0)
-RUN corepack prepare yarn@4.6.0 --activate
+# Install & activate a specific Yarn version (e.g., 4.7.0)
+RUN corepack prepare yarn@4.7.0 --activate
 
 # set java env variables for sonar
 ENV JAVA_HOME=/usr/lib/jvm/default-jvm/jre \

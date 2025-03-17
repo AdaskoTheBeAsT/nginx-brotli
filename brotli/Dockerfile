@@ -42,7 +42,10 @@ RUN echo "load_module /usr/lib/nginx/modules/ngx_http_brotli_filter_module.so;" 
   echo "load_module /usr/lib/nginx/modules/ngx_http_brotli_static_module.so;" >> /etc/nginx/modules.conf && \
   echo "load_module /usr/lib/nginx/modules/ngx_http_headers_more_filter_module.so;" >> /etc/nginx/modules.conf
 
-COPY env.sh /usr/local/bin/env.sh
+COPY ./env.sh /usr/local/bin/env.sh
 RUN chmod +x /usr/local/bin/env.sh
+COPY ./replace_nginx.sh /usr/local/bin/replace_nginx.sh
+RUN chmod +x /usr/local/bin/replace_nginx.sh
+COPY ./opt.nginx.conf /usr/local/bin/opt.nginx.conf
 COPY ./nginx.conf /etc/nginx/nginx.conf
 COPY ./headers.conf /etc/nginx/conf.d/headers.conf
