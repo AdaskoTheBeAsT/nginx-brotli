@@ -17,32 +17,6 @@ fi
 # Collect all prefixes passed to the script
 PREFIXES="$@" # e.g., "a1 a2 a3"
 
-# If .env exists, normalize line endings in the .env file (convert \r\n to \n)
-if [ -f .env ]; then
-  sed -i 's/\r$//' .env
-fi
-
-# Prepare a temp file of all valid KEY=VALUE lines from .env
-TMP_DOTENV_FILE="$(mktemp)"
-if [ -f .env ]; then
-  # Grab lines that look like KEY=VALUE, ignoring commented lines
-  grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .env |
-    sed 's/^"//' |
-    sed 's/"$//' \
-      >"$TMP_DOTENV_FILE"
-else
-  touch "$TMP_DOTENV_FILE"
-fi
-
-# Create a combined list of *all variable names* from both environment and .env
-TMP_ALL_NAMES="$(mktemp)"
-{
-  # a) from the current shell environment
-  env | cut -d= -f1
-  # b) from the .env file
-  cut -d= -f1 "$TMP_DOTENV_FILE"
-} | sort -u >"$TMP_ALL_NAMES"
-
 # Define the directory where the config file is located
 CONFIG_DIR="/var/www"
 BASENAME="env-config"
@@ -97,58 +71,32 @@ output="window._env_ = {\n"
 # Initialize a variable to track whether this is the first entry
 first_entry=true
 
-# Process each line in the .env file
-while IFS= read -r varname; do
-  # Check if the variable name matches any of the prefixes
-  should_skip=true
-  for prefix in $PREFIXES; do
-    case "$varname" in
-    "$prefix"*)
-      should_skip=false
-      break
-      ;;
-    esac
-  done
-  if [ "$should_skip" = true ]; then
-    continue
-  fi
+# Process environment variables matching prefixes
+for prefix in "$@"; do
+  for varname in $(env | cut -d= -f1 | grep -E "^($prefix|CONTENT_SECURITY_POLICY)"); do
+    varvalue="$(printenv "$varname")"
 
-  # Retrieve the value (environment first, fallback to .env)
-  varvalue="$(printenv "$varname" 2>/dev/null || true)" # might be empty
-  if [ -z "$varvalue" ]; then
-    # fallback to .env if present
-    varvalue="$(grep -m1 "^$varname=" "$TMP_DOTENV_FILE" | cut -d= -f2- || true)"
-  fi
-
-  # If still empty, skip
-  [ -z "$varvalue" ] && continue
-
-  # If it's the Content-Security-Policy variable, update Nginx headers *only if* value is not empty or "null"
-  if [ "$varname" = "CONTENT_SECURITY_POLICY" ]; then
-    # Check if the variable is non-empty and not "null"
-    if [ -n "$varvalue" ] && [ "$varvalue" != "null" ]; then
-      echo "Updating Content-Security-Policy in Nginx configuration..."
-      # Replace the existing CSP line in headers.conf with the new value
-      sed -i \
-        "s|^\(more_set_headers \"Content-Security-Policy:\).*|\1 $varvalue\";|g" \
-        /etc/nginx/conf.d/headers.conf
+    if [ "$varname" = "CONTENT_SECURITY_POLICY" ]; then
+      if [ -n "$varvalue" ] && [ "$varvalue" != "null" ]; then
+        echo "Updating Content-Security-Policy in Nginx headers."
+        # Replace the existing CSP line in headers.conf with the new value
+        sed -i \
+          "s|^\(more_set_headers \"Content-Security-Policy:\).*|\1 $varvalue\";|g" \
+          /etc/nginx/conf.d/headers.conf
+      fi
+      continue
     fi
-    # do NOT write CSP to env-config
-    continue
-  fi
 
-  # Escape backslashes and double quotes in varvalue
-  varvalue="$(echo "$varvalue" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+    varvalue="$(echo "$varvalue" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 
-  # Build the key-value pair string
-  if [ "$first_entry" = true ]; then
-    output="$output  \"$varname\": \"$varvalue\""
-    first_entry=false
-  else
-    output="$output,\n  \"$varname\": \"$varvalue\""
-  fi
-
-done <"$TMP_ALL_NAMES"
+    if [ "$first_entry" = true ]; then
+      first_entry=false
+      output="$output  \"$varname\": \"$varvalue\""
+    else
+      output="$output,\n  \"$varname\": \"$varvalue\""
+    fi
+  done
+done
 
 # Close the JSON object in the output
 output="$output\n};"
