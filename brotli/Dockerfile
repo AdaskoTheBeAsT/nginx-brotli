@@ -35,7 +35,8 @@ RUN ./configure --with-compat --add-dynamic-module=../headers-more-nginx-module 
 
 FROM nginx:1.27.4-alpine3.21-slim AS runtime
 
-RUN apk add --no-cache brotli-libs
+RUN apk add --no-cache brotli-libs \
+  && rm /etc/nginx/conf.d/default.conf
 
 COPY --from=builder /usr/src/nginx-${NGINX_VERSION}/objs/*.so /usr/lib/nginx/modules/
 RUN echo "load_module /usr/lib/nginx/modules/ngx_http_brotli_filter_module.so;" > /etc/nginx/modules.conf && \
